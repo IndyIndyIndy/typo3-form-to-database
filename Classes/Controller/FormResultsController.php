@@ -76,7 +76,6 @@ class FormResultsController extends FormManagerController
 
     protected ExtConfUtility $extConfUtility;
     protected FormResultRepository $formResultRepository;
-    protected Dispatcher $signalSlotDispatcher;
     protected BackendUserAuthentication $BEUser;
     protected FormResultDatabaseService $formResultDatabaseService;
 
