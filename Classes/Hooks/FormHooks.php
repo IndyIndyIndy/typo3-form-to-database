@@ -99,7 +99,6 @@ class FormHooks
      */
     public function beforeFormDelete($formPersistenceIdentifier): void
     {
-        //$this->objectManager = GeneralUtility::makeInstance(ObjectManager::class);
         $this->initializeFormResultRepository();
         $this->initializeFormPersistenceManager();
         $yaml = $this->formPersistenceManager->load($formPersistenceIdentifier);
