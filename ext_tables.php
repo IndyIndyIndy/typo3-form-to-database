@@ -12,7 +12,7 @@ use TYPO3\CMS\Extbase\Utility\ExtensionUtility;
 defined('TYPO3_MODE') or die();
 
 ExtensionUtility::registerModule(
-    'Lavitto.FormToDatabase',
+    'FormToDatabase',
     'web',
     'formresults',
     'after:FormFormbuilder',

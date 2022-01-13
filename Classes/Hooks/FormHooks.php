@@ -65,7 +65,6 @@ class FormHooks
      */
     public function initializeFormResultRepository(): void
     {
-        // @todo: verify if this is also working on older versions (e.g. v9, v10)
         $this->formResultRepository = GeneralUtility::makeInstance(FormResultRepository::class);
     }
 

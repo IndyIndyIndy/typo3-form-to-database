@@ -60,20 +60,8 @@ use TYPO3\CMS\Form\Slot\FilePersistenceSlot;
  */
 class FormResultsController extends FormManagerController
 {
-
-    /**
-     *
-     */
     public const SIGNAL_FORMSRESULT_SHOW_ACTION = 'showAction';
-
-    /**
-     *
-     */
     public const SIGNAL_FORMSRESULT_DOWNLOAD_CSV_ACTION = 'downloadCsvAction';
-
-    /**
-     *
-     */
     public const SIGNAL_FORMSRESULT_DELETE_FORM_RESULT_ACTION = 'deleteFormResultAction';
 
     /**
@@ -86,32 +74,11 @@ class FormResultsController extends FormManagerController
      */
     protected const CSV_ENCLOSURE = '"';
 
-    /**
-     * @var ExtConfUtility
-     */
-    protected $extConfUtility;
-
-    /**
-     * The FormResultRepository
-     *
-     * @var FormResultRepository
-     */
-    protected $formResultRepository;
-
-    /**
-     * @var Dispatcher
-     */
-    protected $signalSlotDispatcher;
-
-    /**
-     * @var BackendUserAuthentication
-     */
-    protected $BEUser;
-
-    /**
-     * @var FormResultDatabaseService
-     */
-    protected $formResultDatabaseService;
+    protected ExtConfUtility $extConfUtility;
+    protected FormResultRepository $formResultRepository;
+    protected Dispatcher $signalSlotDispatcher;
+    protected BackendUserAuthentication $BEUser;
+    protected FormResultDatabaseService $formResultDatabaseService;
 
     /**
      * Injects the FormResultRepository
@@ -143,17 +110,11 @@ class FormResultsController extends FormManagerController
         $this->extConfUtility = $extConfUtility;
     }
 
-    /**
-     *
-     */
     protected function initializeAction()
     {
         $this->BEUser = $GLOBALS['BE_USER'];
     }
 
-    /**
-     * Initialize Show Action
-     */
     public function initializeShowAction(): void
     {
         $this->pageRenderer->addCssFile(
@@ -695,8 +656,7 @@ class FormResultsController extends FormManagerController
                 ->setHref($this->getModuleUrl('web_FormToDatabaseFormresults'))
                 ->setTitle($this->getLanguageService()->sL('LLL:EXT:form_to_database/Resources/Private/Language/locallang_be.xlf:show.buttons.backlink'))
                 ->setShowLabelText(true)
-                ->setIcon($this->moduleTemplateFactory->create($this->request)->getIconFactory()->getIcon('actions-view-go-back',
-                    Icon::SIZE_SMALL));
+                ->setIcon($this->iconFactory->getIcon('actions-view-go-back', Icon::SIZE_SMALL));
             $buttonBar->addButton($backFormButton, ButtonBar::BUTTON_POSITION_LEFT);
 
             if ($formPersistenceIdentifier !== null && $showCsvDownload === true) {
@@ -713,7 +673,7 @@ class FormResultsController extends FormManagerController
                     ->setHref($this->getModuleUrl('web_FormToDatabaseFormresults', $urlParameters))
                     ->setTitle($this->getLanguageService()->sL('LLL:EXT:form_to_database/Resources/Private/Language/locallang_be.xlf:show.buttons.download_csv'))
                     ->setShowLabelText(true)
-                    ->setIcon($this->moduleTemplateFactory->create($this->request)->getIconFactory()->getIcon('actions-download',
+                    ->setIcon($this->iconFactory->getIcon('actions-download',
                         Icon::SIZE_SMALL));
                 $buttonBar->addButton($downloadCsvFormButton, ButtonBar::BUTTON_POSITION_LEFT, 2);
 
@@ -723,8 +683,7 @@ class FormResultsController extends FormManagerController
                     ->setHref($this->getModuleUrl('web_FormToDatabaseFormresults', $urlParameters))
                     ->setTitle($this->getLanguageService()->sL('LLL:EXT:form_to_database/Resources/Private/Language/locallang_be.xlf:show.buttons.download_csv_filtered'))
                     ->setShowLabelText(true)
-                    ->setIcon($this->moduleTemplateFactory->create($this->request)->getIconFactory()->getIcon('actions-download',
-                        Icon::SIZE_SMALL));
+                    ->setIcon($this->iconFactory->getIcon('actions-download', Icon::SIZE_SMALL));
                 $buttonBar->addButton($downloadCsvFormButton, ButtonBar::BUTTON_POSITION_LEFT, 2);
             }
         }
@@ -738,7 +697,7 @@ class FormResultsController extends FormManagerController
         $reloadButton = $buttonBar->makeLinkButton()
             ->setHref(GeneralUtility::getIndpEnv('REQUEST_URI'))
             ->setTitle($reloadTitle)
-            ->setIcon($this->moduleTemplateFactory->create($this->request)->getIconFactory()->getIcon('actions-refresh', Icon::SIZE_SMALL));
+            ->setIcon($this->iconFactory->getIcon('actions-refresh', Icon::SIZE_SMALL));
         $buttonBar->addButton($reloadButton, ButtonBar::BUTTON_POSITION_RIGHT);
 
         // Shortcut
