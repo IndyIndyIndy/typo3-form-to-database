@@ -23,12 +23,15 @@ use Lavitto\FormToDatabase\Utility\ExtConfUtility;
 use Lavitto\FormToDatabase\Utility\FormDefinitionUtility;
 use Lavitto\FormToDatabase\Utility\FormValueUtility;
 use PDO;
+use Psr\Http\Message\ResponseInterface;
 use TYPO3\CMS\Backend\Template\Components\ButtonBar;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Imaging\Icon;
+use TYPO3\CMS\Core\Pagination\ArrayPaginator;
+use TYPO3\CMS\Core\Pagination\SimplePagination;
 use TYPO3\CMS\Core\Resource\Driver\LocalDriver;
 use TYPO3\CMS\Core\Resource\File;
 use TYPO3\CMS\Core\Resource\Filter\FileExtensionFilter;
@@ -44,6 +47,7 @@ use TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException;
 use TYPO3\CMS\Extbase\SignalSlot\Dispatcher;
 use TYPO3\CMS\Extbase\SignalSlot\Exception\InvalidSlotException;
 use TYPO3\CMS\Extbase\SignalSlot\Exception\InvalidSlotReturnException;
+use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 use TYPO3\CMS\Form\Controller\FormManagerController;
 use TYPO3\CMS\Form\Domain\Exception\RenderingException;
 use TYPO3\CMS\Form\Domain\Factory\ArrayFormFactory;
@@ -154,7 +158,7 @@ class FormResultsController extends FormManagerController
      */
     public function initializeShowAction(): void
     {
-        $this->getPageRenderer()->addCssFile(
+        $this->pageRenderer->addCssFile(
             'EXT:form_to_database/Resources/Public/Css/ShowPrintStyles.min.css',
             'stylesheet',
             'print'
@@ -179,16 +183,22 @@ class FormResultsController extends FormManagerController
      * @internal
      * @noinspection PhpUndefinedMethodInspection
      */
-    public function indexAction(): void
+    public function indexAction(int $page = 1): ResponseInterface
     {
         $this->registerDocheaderButtons();
-        $this->view->getModuleTemplate()->setModuleName($this->request->getPluginName() . '_' . $this->request->getControllerName());
-        $this->view->getModuleTemplate()->setFlashMessageQueue($this->controllerContext->getFlashMessageQueue());
+        $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
+        $moduleTemplate->setModuleName($this->request->getPluginName() . '_' . $this->request->getControllerName());
+        $moduleTemplate->setFlashMessageQueue($this->controllerContext->getFlashMessageQueue());
         $availableFormDefinitions = $this->getAvailableFormDefinitions();
         $this->enrichFormDefinitionsWithHighestCrDate($availableFormDefinitions);
         $this->view->assign('forms', $availableFormDefinitions);
         $this->view->assign('deletedForms', $this->getDeletedFormDefinitions($availableFormDefinitions));
         $this->assignDefaults();
+
+        $moduleTemplate->setTitle(LocalizationUtility::translate('LLL:EXT:belog/Resources/Private/Language/locallang_mod.xlf:mlang_tabs_tab'));
+        $moduleTemplate->setContent($this->view->render());
+
+        return $this->htmlResponse($moduleTemplate->renderContent());
     }
 
     /**
@@ -233,18 +243,27 @@ class FormResultsController extends FormManagerController
      * Shows the results of a form
      *
      * @param string $formPersistenceIdentifier
+     * @param int $currentPage
      * @throws InvalidQueryException
      * @throws RenderingException
      * @noinspection PhpUndefinedMethodInspection
      * @noinspection PhpUnused
      */
-    public function showAction(string $formPersistenceIdentifier): void
+    public function showAction(string $formPersistenceIdentifier, int $currentPage = 1): ResponseInterface
     {
-        $newDataExists = false;
+        $page = $this->request->getArguments()['currentPage'] ?? 1;
+//        DebuggerUtility::var_dump($this->arguments->getArgument('page')->getValue());
+//        $this->getA
+//
+//        $page = $this->request->getQueryParams()['tx_formtodatabase_web_formtodatabaseformresults']['currentPage'] ?? 1;
+//
+//        DebuggerUtility::var_dump($this->request->getQueryParams());
 
+        $newDataExists = false;
         $languageFile = 'LLL:EXT:form_to_database/Resources/Private/Language/locallang_be.xlf:';
-        $this->view->getModuleTemplate()->getPageRenderer()->loadRequireJsModule('TYPO3/CMS/Backend/Modal');
-        $this->view->getModuleTemplate()->getPageRenderer()->addInlineLanguageLabelArray([
+
+        $this->pageRenderer->loadRequireJsModule('TYPO3/CMS/Backend/Modal');
+        $this->pageRenderer->addInlineLanguageLabelArray([
             'ftd_deleteTitle' => $this->getLanguageService()->sL($languageFile . 'show.buttons.delete.title'),
             'ftd_deleteDescription' => $this->getLanguageService()->sL($languageFile . 'show.buttons.delete.description')
         ]);
@@ -269,6 +288,9 @@ class FormResultsController extends FormManagerController
             '$formRenderables' => $formRenderables
         ]);
 
+        $paginator = new ArrayPaginator($formResults->toArray(), $page, 3);
+        $pagination = new SimplePagination($paginator);
+
         $this->registerDocheaderButtons($formPersistenceIdentifier, $formResults->count() > 0);
         $this->view->assignMultiple([
             'formResults' => $formResults,
@@ -276,13 +298,20 @@ class FormResultsController extends FormManagerController
             'formRenderables' => $formRenderables,
             'formPersistenceIdentifier' => $formPersistenceIdentifier,
             'newDataExists' => $newDataExists,
-            'lastView' => $lastView
+            'lastView' => $lastView,
+            'paginator' => $paginator,
+            'pagination' => $pagination,
         ]);
         $this->assignDefaults();
 
         // For current formDefinition, add/replace lastView timestamp to uc with current time
         $this->BEUser->uc['tx_formtodatabase']['lastView'][$formDefinition->getIdentifier()] = time();
         $this->BEUser->writeUC();
+
+        $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
+        $moduleTemplate->setContent($this->view->render());
+
+        return $this->htmlResponse($moduleTemplate->renderContent());
     }
 
     /**
@@ -668,7 +697,7 @@ class FormResultsController extends FormManagerController
         bool $showCsvDownload = false
     ): void {
         /** @var ButtonBar $buttonBar */
-        $buttonBar = $this->view->getModuleTemplate()->getDocHeaderComponent()->getButtonBar();
+        $buttonBar = $this->moduleTemplateFactory->create($this->request)->getDocHeaderComponent()->getButtonBar();
         $currentRequest = $this->request;
         $moduleName = $currentRequest->getPluginName();
         $getVars = $this->request->getArguments();
@@ -678,7 +707,7 @@ class FormResultsController extends FormManagerController
                 ->setHref($this->getModuleUrl('web_FormToDatabaseFormresults'))
                 ->setTitle($this->getLanguageService()->sL('LLL:EXT:form_to_database/Resources/Private/Language/locallang_be.xlf:show.buttons.backlink'))
                 ->setShowLabelText(true)
-                ->setIcon($this->view->getModuleTemplate()->getIconFactory()->getIcon('actions-view-go-back',
+                ->setIcon($this->moduleTemplateFactory->create($this->request)->getIconFactory()->getIcon('actions-view-go-back',
                     Icon::SIZE_SMALL));
             $buttonBar->addButton($backFormButton, ButtonBar::BUTTON_POSITION_LEFT);
 
@@ -696,7 +725,7 @@ class FormResultsController extends FormManagerController
                     ->setHref($this->getModuleUrl('web_FormToDatabaseFormresults', $urlParameters))
                     ->setTitle($this->getLanguageService()->sL('LLL:EXT:form_to_database/Resources/Private/Language/locallang_be.xlf:show.buttons.download_csv'))
                     ->setShowLabelText(true)
-                    ->setIcon($this->view->getModuleTemplate()->getIconFactory()->getIcon('actions-download',
+                    ->setIcon($this->moduleTemplateFactory->create($this->request)->getIconFactory()->getIcon('actions-download',
                         Icon::SIZE_SMALL));
                 $buttonBar->addButton($downloadCsvFormButton, ButtonBar::BUTTON_POSITION_LEFT, 2);
 
@@ -706,7 +735,7 @@ class FormResultsController extends FormManagerController
                     ->setHref($this->getModuleUrl('web_FormToDatabaseFormresults', $urlParameters))
                     ->setTitle($this->getLanguageService()->sL('LLL:EXT:form_to_database/Resources/Private/Language/locallang_be.xlf:show.buttons.download_csv_filtered'))
                     ->setShowLabelText(true)
-                    ->setIcon($this->view->getModuleTemplate()->getIconFactory()->getIcon('actions-download',
+                    ->setIcon($this->moduleTemplateFactory->create($this->request)->getIconFactory()->getIcon('actions-download',
                         Icon::SIZE_SMALL));
                 $buttonBar->addButton($downloadCsvFormButton, ButtonBar::BUTTON_POSITION_LEFT, 2);
             }
@@ -721,7 +750,7 @@ class FormResultsController extends FormManagerController
         $reloadButton = $buttonBar->makeLinkButton()
             ->setHref(GeneralUtility::getIndpEnv('REQUEST_URI'))
             ->setTitle($reloadTitle)
-            ->setIcon($this->view->getModuleTemplate()->getIconFactory()->getIcon('actions-refresh', Icon::SIZE_SMALL));
+            ->setIcon($this->moduleTemplateFactory->create($this->request)->getIconFactory()->getIcon('actions-refresh', Icon::SIZE_SMALL));
         $buttonBar->addButton($reloadButton, ButtonBar::BUTTON_POSITION_RIGHT);
 
         // Shortcut
