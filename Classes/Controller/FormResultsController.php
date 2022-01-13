@@ -40,14 +40,12 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\VersionNumberUtility;
 use TYPO3\CMS\Extbase\Mvc\Exception\NoSuchArgumentException;
 use TYPO3\CMS\Extbase\Mvc\Exception\StopActionException;
-use TYPO3\CMS\Extbase\Mvc\Exception\UnsupportedRequestTypeException;
 use TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException;
 use TYPO3\CMS\Extbase\Persistence\Exception\InvalidQueryException;
 use TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException;
 use TYPO3\CMS\Extbase\SignalSlot\Dispatcher;
 use TYPO3\CMS\Extbase\SignalSlot\Exception\InvalidSlotException;
 use TYPO3\CMS\Extbase\SignalSlot\Exception\InvalidSlotReturnException;
-use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 use TYPO3\CMS\Form\Controller\FormManagerController;
 use TYPO3\CMS\Form\Domain\Exception\RenderingException;
 use TYPO3\CMS\Form\Domain\Factory\ArrayFormFactory;
@@ -179,23 +177,22 @@ class FormResultsController extends FormManagerController
     /**
      * Displays the Form Overview
      *
-     * @throws InvalidQueryException
+     * @throws InvalidQueryException|\Doctrine\DBAL\DBALException
      * @internal
      * @noinspection PhpUndefinedMethodInspection
      */
     public function indexAction(int $page = 1): ResponseInterface
     {
         $this->registerDocheaderButtons();
-        $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
-        $moduleTemplate->setModuleName($this->request->getPluginName() . '_' . $this->request->getControllerName());
-        $moduleTemplate->setFlashMessageQueue($this->controllerContext->getFlashMessageQueue());
         $availableFormDefinitions = $this->getAvailableFormDefinitions();
         $this->enrichFormDefinitionsWithHighestCrDate($availableFormDefinitions);
         $this->view->assign('forms', $availableFormDefinitions);
         $this->view->assign('deletedForms', $this->getDeletedFormDefinitions($availableFormDefinitions));
         $this->assignDefaults();
 
-        $moduleTemplate->setTitle(LocalizationUtility::translate('LLL:EXT:belog/Resources/Private/Language/locallang_mod.xlf:mlang_tabs_tab'));
+        $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
+        $moduleTemplate->setModuleName($this->request->getPluginName() . '_' . $this->request->getControllerName());
+        $moduleTemplate->setFlashMessageQueue($this->controllerContext->getFlashMessageQueue());
         $moduleTemplate->setContent($this->view->render());
 
         return $this->htmlResponse($moduleTemplate->renderContent());
@@ -213,6 +210,7 @@ class FormResultsController extends FormManagerController
 
     /**
      * @param $formDefinitions
+     * @throws \Doctrine\DBAL\DBALException
      */
     private function enrichFormDefinitionsWithHighestCrDate(&$formDefinitions)
     {
@@ -243,22 +241,15 @@ class FormResultsController extends FormManagerController
      * Shows the results of a form
      *
      * @param string $formPersistenceIdentifier
-     * @param int $currentPage
+     * @return ResponseInterface
      * @throws InvalidQueryException
      * @throws RenderingException
      * @noinspection PhpUndefinedMethodInspection
      * @noinspection PhpUnused
      */
-    public function showAction(string $formPersistenceIdentifier, int $currentPage = 1): ResponseInterface
+    public function showAction(string $formPersistenceIdentifier): ResponseInterface
     {
-        $page = $this->request->getArguments()['currentPage'] ?? 1;
-//        DebuggerUtility::var_dump($this->arguments->getArgument('page')->getValue());
-//        $this->getA
-//
-//        $page = $this->request->getQueryParams()['tx_formtodatabase_web_formtodatabaseformresults']['currentPage'] ?? 1;
-//
-//        DebuggerUtility::var_dump($this->request->getQueryParams());
-
+        $currentPage = $this->request->getArguments()['currentPage'] ?? 1;
         $newDataExists = false;
         $languageFile = 'LLL:EXT:form_to_database/Resources/Private/Language/locallang_be.xlf:';
 
@@ -288,7 +279,7 @@ class FormResultsController extends FormManagerController
             '$formRenderables' => $formRenderables
         ]);
 
-        $paginator = new ArrayPaginator($formResults->toArray(), $page, 3);
+        $paginator = new ArrayPaginator($formResults->toArray(), $currentPage, 3);
         $pagination = new SimplePagination($paginator);
 
         $this->registerDocheaderButtons($formPersistenceIdentifier, $formResults->count() > 0);
@@ -341,7 +332,6 @@ class FormResultsController extends FormManagerController
      * @throws IllegalObjectTypeException
      * @throws RenderingException
      * @throws StopActionException
-     * @throws UnsupportedRequestTypeException
      */
     public function deleteFormResultAction(FormResult $formResult): void
     {
@@ -363,7 +353,6 @@ class FormResultsController extends FormManagerController
      * @param string $formIdentifier
      * @throws IllegalObjectTypeException
      * @throws StopActionException
-     * @throws UnsupportedRequestTypeException
      * @throws UnknownObjectException
      * @noinspection PhpParamsInspection
      */
@@ -398,7 +387,6 @@ class FormResultsController extends FormManagerController
     /**
      * @throws NoSuchArgumentException
      * @throws StopActionException
-     * @throws UnsupportedRequestTypeException
      */
     public function updateItemListSelectAction(): void
     {
