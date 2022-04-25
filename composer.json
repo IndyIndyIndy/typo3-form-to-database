@@ -1,5 +1,5 @@
 {
-  "name": "lavitto/typo3-form-to-database",
+  "name": "indyindyindy/typo3-form-to-database",
   "description": "Extends the TYPO3 form with a database finisher, to save every form-result in the database.",
   "type": "typo3-cms-extension",
   "keywords": [
