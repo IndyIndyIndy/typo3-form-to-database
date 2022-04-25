@@ -25,6 +25,7 @@ use Lavitto\FormToDatabase\Utility\FormValueUtility;
 use PDO;
 use Psr\Http\Message\ResponseInterface;
 use TYPO3\CMS\Backend\Template\Components\ButtonBar;
+use TYPO3\CMS\Backend\Template\ModuleTemplate;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
@@ -78,6 +79,7 @@ class FormResultsController extends FormManagerController
     protected FormResultRepository $formResultRepository;
     protected BackendUserAuthentication $BEUser;
     protected FormResultDatabaseService $formResultDatabaseService;
+    protected ModuleTemplate $moduleTemplate;
 
     /**
      * Injects the FormResultRepository
@@ -112,6 +114,7 @@ class FormResultsController extends FormManagerController
     protected function initializeAction()
     {
         $this->BEUser = $GLOBALS['BE_USER'];
+        $this->moduleTemplate = $this->moduleTemplateFactory->create($this->request);
     }
 
     public function initializeShowAction(): void
@@ -150,12 +153,11 @@ class FormResultsController extends FormManagerController
         $this->view->assign('deletedForms', $this->getDeletedFormDefinitions($availableFormDefinitions));
         $this->assignDefaults();
 
-        $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
-        $moduleTemplate->setModuleName($this->request->getPluginName() . '_' . $this->request->getControllerName());
-        $moduleTemplate->setFlashMessageQueue($this->controllerContext->getFlashMessageQueue());
-        $moduleTemplate->setContent($this->view->render());
+        $this->moduleTemplate->setModuleName($this->request->getPluginName() . '_' . $this->request->getControllerName());
+        $this->moduleTemplate->setFlashMessageQueue($this->controllerContext->getFlashMessageQueue());
+        $this->moduleTemplate->setContent($this->view->render());
 
-        return $this->htmlResponse($moduleTemplate->renderContent());
+        return $this->htmlResponse($this->moduleTemplate->renderContent());
     }
 
     /**
@@ -259,10 +261,9 @@ class FormResultsController extends FormManagerController
         $this->BEUser->uc['tx_formtodatabase']['lastView'][$formDefinition->getIdentifier()] = time();
         $this->BEUser->writeUC();
 
-        $moduleTemplate = $this->moduleTemplateFactory->create($this->request);
-        $moduleTemplate->setContent($this->view->render());
+        $this->moduleTemplate->setContent($this->view->render());
 
-        return $this->htmlResponse($moduleTemplate->renderContent());
+        return $this->htmlResponse($this->moduleTemplate->renderContent());
     }
 
     /**
@@ -464,7 +465,7 @@ class FormResultsController extends FormManagerController
      */
     protected function getFormDefinition(
         string $formPersistenceIdentifier,
-        $useFieldStateDataAsRenderables = false
+               $useFieldStateDataAsRenderables = false
     ): array {
         $configuration = $this->formPersistenceManager->load($formPersistenceIdentifier);
 
@@ -492,7 +493,7 @@ class FormResultsController extends FormManagerController
      */
     protected function getFormDefinitionObject(
         string $formPersistenceIdentifier,
-        $useFieldStateDataAsRenderables = false
+               $useFieldStateDataAsRenderables = false
     ): FormDefinition {
         $configuration = $this->getFormDefinition($formPersistenceIdentifier, $useFieldStateDataAsRenderables);
         if (isset($configuration['renderables']) && !empty($configuration['renderables'])) {
@@ -645,7 +646,7 @@ class FormResultsController extends FormManagerController
         bool $showCsvDownload = false
     ): void {
         /** @var ButtonBar $buttonBar */
-        $buttonBar = $this->moduleTemplateFactory->create($this->request)->getDocHeaderComponent()->getButtonBar();
+        $buttonBar = $this->moduleTemplate->getDocHeaderComponent()->getButtonBar();
         $currentRequest = $this->request;
         $moduleName = $currentRequest->getPluginName();
         $getVars = $this->request->getArguments();
